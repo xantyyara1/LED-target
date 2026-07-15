@@ -12,13 +12,13 @@ String aktual = "300";
 String persen = "100%";
 void updateDisplay() {
 
-  dmd.clearScreen(true);
-  dmd.selectFont(SystemFont5x7);
+dmd.clearScreen(true);
+dmd.selectFont(SystemFont5x7);
 
-  dmd.drawString(0, 0,  mesin.c_str(),  mesin.length(),  GRAPHICS_NORMAL);
-  dmd.drawString(0, 8,  target.c_str(), target.length(), GRAPHICS_NORMAL);
-  dmd.drawString(0,16,  aktual.c_str(), aktual.length(), GRAPHICS_NORMAL);
-  dmd.drawString(0,24,  persen.c_str(), persen.length(), GRAPHICS_NORMAL);
+dmd.drawString(0, 0,  mesin.c_str(),  mesin.length(),  GRAPHICS_NORMAL);
+dmd.drawString(0, 8,  target.c_str(), target.length(), GRAPHICS_NORMAL);
+dmd.drawString(0,16,  aktual.c_str(), aktual.length(), GRAPHICS_NORMAL);
+dmd.drawString(0,24,  persen.c_str(), persen.length(), GRAPHICS_NORMAL);
 
 }
 void IRAM_ATTR triggerScan() {
@@ -28,13 +28,13 @@ void IRAM_ATTR triggerScan() {
 void setup() {
   Serial.begin(115200);
 
-  uint8_t cpuClock = ESP.getCpuFreqMHz();
+uint8_t cpuClock = ESP.getCpuFreqMHz();
 
-  timer = timerBegin(0, cpuClock, true);
-  timerAttachInterrupt(timer, &triggerScan, true);
-  timerAlarmWrite(timer, 100, true);
-  timerAlarmEnable(timer);
-  updateDisplay(); 
+timer = timerBegin(0, cpuClock, true);
+timerAttachInterrupt(timer, &triggerScan, true);
+timerAlarmWrite(timer, 100, true);
+timerAlarmEnable(timer);
+updateDisplay(); 
 }
 
 void loop() {

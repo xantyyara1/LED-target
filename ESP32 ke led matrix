@@ -38,19 +38,6 @@ void setup() {
 }
 
 void loop() {
-  dmd.selectFont(Arial_Black_16);
-  String txt_1 = "Edutic.id";
-  char char_array_txt_1[txt_1.length() + 1];
-  txt_1.toCharArray(char_array_txt_1, txt_1.length() + 1);
-  dmd.clearScreen(true);
-  delay(1000);
-  dmd.drawMarquee(char_array_txt_1, txt_1.length(), (32 * DISPLAYS_ACROSS) - 1, 0);
-  long timer_1 = millis();
-  boolean ret = false;
-  while (!ret) {
-    if ((timer_1 + 50) < millis()) {
-      ret = dmd.stepMarquee(-1, 0);
-      timer_1 = millis();
-    }
-  }
+
+    } }
 }

@@ -2,7 +2,7 @@
 #include "fonts/SystemFont5x7.h"
 
 #define DISPLAYS_ACROSS 1
-#define DISPLAYS_DOWN 1
+#define DISPLAYS_DOWN 2
 DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
 
 hw_timer_t* timer = NULL;
@@ -38,17 +38,17 @@ void setup() {
 
 void loop() {
   dmd.selectFont(SystemFont5x7);
-
   String txt_1 = "C502";
   String txt_2 = "300";
-  char char_array_txt_1[txt_1.length() + 1];
-  txt_1.toCharArray(char_array_txt_1, txt_1.length() + 1);
-  char char_array_txt_2[txt_2.length() + 1];
-  txt_2.toCharArray(char_array_txt_2, txt_2.length() + 1);
+  String txt_3 = "300";
+  String txt_4 = "100%";
+
   dmd.clearScreen(true);
 
-  dmd.drawString(0, 0, char_array_txt_1, txt_1.length(), GRAPHICS_NORMAL);
-  dmd.drawString(0, 8, char_array_txt_2, txt_2.length(), GRAPHICS_NORMAL);
+  dmd.drawString(0, 0,  txt_1.c_str(), txt_1.length(), GRAPHICS_NORMAL);
+  dmd.drawString(0, 8,  txt_2.c_str(), txt_2.length(), GRAPHICS_NORMAL);
+  dmd.drawString(0,16,  txt_3.c_str(), txt_3.length(), GRAPHICS_NORMAL);
+  dmd.drawString(0,24,  txt_4.c_str(), txt_4.length(), GRAPHICS_NORMAL);
 
   while (1);
 }

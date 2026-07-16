@@ -19,14 +19,41 @@ dmd.drawString(0, 0,  mesin.c_str(),  mesin.length(),  GRAPHICS_NORMAL);
 dmd.drawString(0, 8,  target.c_str(), target.length(), GRAPHICS_NORMAL);
 dmd.drawString(0,16,  aktual.c_str(), aktual.length(), GRAPHICS_NORMAL);
 dmd.drawString(0,24,  persen.c_str(), persen.length(), GRAPHICS_NORMAL);
-
 }
+
 void setTarget(int value)
 {
   target = String(value);
 
+  hitungPersen();
+
   Serial.print("Target berubah menjadi : ");
   Serial.println(target);
+
+  updateDisplay();
+}
+void hitungPersen()
+{
+  int t = target.toInt();
+  int a = aktual.toInt();
+
+  if (t <= 0) {
+    persen = "0%";
+    return;
+  }
+
+  int p = (a * 100) / t;
+  persen = String(p) + "%";
+}
+
+void setAktual(int value)
+{
+  aktual = String(value);
+
+  hitungPersen();
+
+  Serial.print("Aktual berubah menjadi : ");
+  Serial.println(aktual);
 
   updateDisplay();
 }
@@ -48,12 +75,21 @@ updateDisplay();
 }
 
 void loop() {
-  delay(5000);
-  setTarget(100);
 
-  delay(5000);
-  setTarget(300);
+  delay(3000);
 
-  delay(5000);
-  setTarget(800);
+  setTarget(500);
+
+  delay(3000);
+
+  setAktual(125);
+
+  delay(3000);
+
+  setAktual(250);
+
+  delay(3000);
+
+  setAktual(500);
+
 }

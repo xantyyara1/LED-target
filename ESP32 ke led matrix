@@ -8,12 +8,12 @@ DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
 hw_timer_t* timer = NULL;
 String mesin  = "C502";
 String target = "300";
-String aktual = "300";
-String persen = "100%";
-void updateDisplay() {
+String aktual = "0";
+String persen = "0%";
+uint32_t counter = 0;
 
+void updateDisplay() {
 dmd.clearScreen(true);
-dmd.selectFont(SystemFont5x7);
 
 dmd.drawString(0, 0,  mesin.c_str(),  mesin.length(),  GRAPHICS_NORMAL);
 dmd.drawString(0, 8,  target.c_str(), target.length(), GRAPHICS_NORMAL);
@@ -24,9 +24,7 @@ dmd.drawString(0,24,  persen.c_str(), persen.length(), GRAPHICS_NORMAL);
 void setTarget(int value)
 {
   target = String(value);
-
   hitungPersen();
-
   Serial.print("Target berubah menjadi : ");
   Serial.println(target);
 
@@ -36,12 +34,10 @@ void hitungPersen()
 {
   int t = target.toInt();
   int a = aktual.toInt();
-
   if (t <= 0) {
     persen = "0%";
     return;
   }
-
   int p = (a * 100) / t;
   persen = String(p) + "%";
 }
@@ -49,47 +45,33 @@ void hitungPersen()
 void setAktual(int value)
 {
   aktual = String(value);
-
   hitungPersen();
-
   Serial.print("Aktual berubah menjadi : ");
   Serial.println(aktual);
-
   updateDisplay();
 }
-
+void incrementCounter()
+{
+  counter++;
+  setAktual(counter);
+}
 void IRAM_ATTR triggerScan() {
   dmd.scanDisplayBySPI();
 }
 
 void setup() {
   Serial.begin(115200);
-
 uint8_t cpuClock = ESP.getCpuFreqMHz();
-
 timer = timerBegin(0, cpuClock, true);
 timerAttachInterrupt(timer, &triggerScan, true);
 timerAlarmWrite(timer, 100, true);
 timerAlarmEnable(timer);
-updateDisplay(); 
+dmd.selectFont(SystemFont5x7);
+setTarget(100);
+setAktual(counter);
 }
 
 void loop() {
-
-  delay(3000);
-
-  setTarget(500);
-
-  delay(3000);
-
-  setAktual(125);
-
-  delay(3000);
-
-  setAktual(250);
-
-  delay(3000);
-
-  setAktual(500);
-
+  delay(1000);
+  incrementCounter();
 }

@@ -21,6 +21,16 @@ dmd.drawString(0,16,  aktual.c_str(), aktual.length(), GRAPHICS_NORMAL);
 dmd.drawString(0,24,  persen.c_str(), persen.length(), GRAPHICS_NORMAL);
 
 }
+void setTarget(int value)
+{
+  target = String(value);
+
+  Serial.print("Target berubah menjadi : ");
+  Serial.println(target);
+
+  updateDisplay();
+}
+
 void IRAM_ATTR triggerScan() {
   dmd.scanDisplayBySPI();
 }
@@ -38,4 +48,12 @@ updateDisplay();
 }
 
 void loop() {
+  delay(5000);
+  setTarget(100);
+
+  delay(5000);
+  setTarget(300);
+
+  delay(5000);
+  setTarget(800);
 }

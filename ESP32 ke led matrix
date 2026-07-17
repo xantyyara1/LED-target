@@ -3,6 +3,7 @@
 
 #define DISPLAYS_ACROSS 1
 #define DISPLAYS_DOWN 2
+#define PIN_COUNTER 27
 DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
 
 hw_timer_t* timer = NULL;
@@ -10,7 +11,8 @@ String mesin  = "C502";
 String target = "300";
 String aktual = "0";
 String persen = "0%";
-uint32_t counter = 0;
+volatile uint32_t counter = 0;
+uint32_t lastCounter = 0;
 
 void updateDisplay() {
 dmd.clearScreen(true);
@@ -50,13 +52,12 @@ void setAktual(int value)
   Serial.println(aktual);
   updateDisplay();
 }
-void incrementCounter()
-{
-  counter++;
-  setAktual(counter);
-}
+
 void IRAM_ATTR triggerScan() {
   dmd.scanDisplayBySPI();
+}
+void IRAM_ATTR pulseISR() {
+  counter++;
 }
 
 void setup() {
@@ -66,12 +67,19 @@ timer = timerBegin(0, cpuClock, true);
 timerAttachInterrupt(timer, &triggerScan, true);
 timerAlarmWrite(timer, 100, true);
 timerAlarmEnable(timer);
+pinMode(PIN_COUNTER, INPUT_PULLUP);
+attachInterrupt(
+    digitalPinToInterrupt(PIN_COUNTER),
+    pulseISR,
+    RISING);
 dmd.selectFont(SystemFont5x7);
 setTarget(100);
 setAktual(counter);
 }
 
 void loop() {
-  delay(1000);
-  incrementCounter();
+  if (counter != lastCounter) {
+    lastCounter = counter;
+    setAktual(counter);
+  }
 }

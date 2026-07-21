@@ -1,35 +1,36 @@
 #include <DMD32.h>
 #include "fonts/SystemFont5x7.h"
-
 #define DISPLAYS_ACROSS 1
 #define DISPLAYS_DOWN 2
 #define PIN_COUNTER 27
 DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
-
 hw_timer_t* timer = NULL;
+
+void IRAM_ATTR triggerScan()
+{
+    dmd.scanDisplayBySPI();
+}
 String mesin  = "C502";
 String target = "300";
 String aktual = "0";
 String persen = "0%";
 volatile uint32_t counter = 0;
 uint32_t lastCounter = 0;
-
+volatile uint32_t interruptTime[20];
+volatile uint8_t interruptIndex = 0;
 void updateDisplay() {
 dmd.clearScreen(true);
-
 dmd.drawString(0, 0,  mesin.c_str(),  mesin.length(),  GRAPHICS_NORMAL);
 dmd.drawString(0, 8,  target.c_str(), target.length(), GRAPHICS_NORMAL);
 dmd.drawString(0,16,  aktual.c_str(), aktual.length(), GRAPHICS_NORMAL);
 dmd.drawString(0,24,  persen.c_str(), persen.length(), GRAPHICS_NORMAL);
 }
-
 void setTarget(int value)
 {
   target = String(value);
   hitungPersen();
   Serial.print("Target berubah menjadi : ");
   Serial.println(target);
-
   updateDisplay();
 }
 void hitungPersen()
@@ -43,7 +44,6 @@ void hitungPersen()
   int p = (a * 100) / t;
   persen = String(p) + "%";
 }
-
 void setAktual(int value)
 {
   aktual = String(value);
@@ -53,13 +53,15 @@ void setAktual(int value)
   updateDisplay();
 }
 
-void IRAM_ATTR triggerScan() {
-  dmd.scanDisplayBySPI();
+void IRAM_ATTR pulseISR()
+{
+    if (interruptIndex < 20)
+    {
+        interruptTime[interruptIndex] = micros();
+        interruptIndex++;
+    }
+    counter++;
 }
-void IRAM_ATTR pulseISR() {
-  counter++;
-}
-
 void setup() {
   Serial.begin(115200);
 uint8_t cpuClock = ESP.getCpuFreqMHz();
@@ -76,10 +78,27 @@ dmd.selectFont(SystemFont5x7);
 setTarget(100);
 setAktual(counter);
 }
-
 void loop() {
   if (counter != lastCounter) {
     lastCounter = counter;
     setAktual(counter);
   }
+static uint8_t lastIndex = 0;
+
+if (interruptIndex != lastIndex)
+{
+    noInterrupts();
+    uint8_t jumlah = interruptIndex;
+    interrupts();
+
+    Serial.println("-----");
+
+    for (uint8_t i = lastIndex; i < jumlah; i++)
+    {
+        Serial.print(i);
+        Serial.print(" : ");
+        Serial.println(interruptTime[i]);
+    }
+    lastIndex = jumlah;
+}
 }

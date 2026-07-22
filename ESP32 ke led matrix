@@ -5,7 +5,6 @@
 #define PIN_COUNTER 27
 DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
 hw_timer_t* timer = NULL;
-
 void IRAM_ATTR triggerScan()
 {
     dmd.scanDisplayBySPI();
@@ -16,8 +15,8 @@ String aktual = "0";
 String persen = "0%";
 volatile uint32_t counter = 0;
 uint32_t lastCounter = 0;
-volatile uint32_t interruptTime[20];
-volatile uint8_t interruptIndex = 0;
+volatile uint32_t lastInterruptUs = 0; 
+constexpr uint32_t FILTER_US = 3000; // 3 ms
 void updateDisplay() {
 dmd.clearScreen(true);
 dmd.drawString(0, 0,  mesin.c_str(),  mesin.length(),  GRAPHICS_NORMAL);
@@ -52,15 +51,14 @@ void setAktual(int value)
   Serial.println(aktual);
   updateDisplay();
 }
-
 void IRAM_ATTR pulseISR()
 {
-    if (interruptIndex < 20)
+    uint32_t now = micros();
+    if ((now - lastInterruptUs) >= FILTER_US)
     {
-        interruptTime[interruptIndex] = micros();
-        interruptIndex++;
+        counter++;
+        lastInterruptUs = now;
     }
-    counter++;
 }
 void setup() {
   Serial.begin(115200);
@@ -78,27 +76,28 @@ dmd.selectFont(SystemFont5x7);
 setTarget(100);
 setAktual(counter);
 }
-void loop() {
-  if (counter != lastCounter) {
-    lastCounter = counter;
-    setAktual(counter);
-  }
-static uint8_t lastIndex = 0;
+static bool lastState = HIGH;
 
-if (interruptIndex != lastIndex)
+void loop()
 {
-    noInterrupts();
-    uint8_t jumlah = interruptIndex;
-    interrupts();
+    bool state = digitalRead(PIN_COUNTER);
 
-    Serial.println("-----");
-
-    for (uint8_t i = lastIndex; i < jumlah; i++)
+    if (state != lastState)
     {
-        Serial.print(i);
-        Serial.print(" : ");
-        Serial.println(interruptTime[i]);
+       if (state == HIGH)
+        Serial.println("Pin HIGH");
+    else
+        Serial.println("Pin LOW"); 
+        lastState = state;
     }
-    lastIndex = jumlah;
+    uint32_t currentCounter;
+    noInterrupts();
+    currentCounter = counter;
+    interrupts();
+    if (currentCounter != lastCounter)
+    {
+        lastCounter = currentCounter;
+        setAktual(currentCounter);
+    }
 }
-}
+

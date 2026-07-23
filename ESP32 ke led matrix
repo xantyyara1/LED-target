@@ -1,3 +1,5 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
 #include <DMD32.h>
 #include "fonts/SystemFont5x7.h"
 
@@ -5,7 +7,15 @@
 #define DISPLAYS_DOWN 2
 #define PIN_COUNTER 27
 
+const char* WIFI_SSID = "Repeater_PPIC";
+const char* WIFI_PASSWORD = "9876543210repeat";
+const char* MQTT_SERVER = "192.168.31.13";
+const uint16_t MQTT_PORT = 1883;
+const char* MACHINE_ID = "0502";
+
 DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
+WiFiClient espClient;
+PubSubClient mqtt(espClient);
 hw_timer_t *timer = NULL;
 
 void IRAM_ATTR triggerScan()
@@ -20,11 +30,15 @@ String persen = "0%";
 
 uint32_t counter = 0;
 
+String topicCounter;
+String topicTarget;
+String topicReset;
+String topicStatus;
+String topicMesin;
+
 bool lastState = HIGH;
 uint32_t lastValidPulse = 0;
-
-// 50 ms (nanti bisa kita ubah)
-const uint32_t LOCK_TIME_US = 50000;
+const uint32_t LOCK_TIME_US = 50000; //filter 50ms
 
 void updateDisplay()
 {
@@ -63,9 +77,59 @@ void setAktual(int value)
     updateDisplay();
 }
 
+void setupWiFi()
+{
+    Serial.println();
+    Serial.println("Connecting WiFi...");
+
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+
+    Serial.println();
+    Serial.println("WiFi Connected");
+    Serial.print("IP Address : ");
+    Serial.println(WiFi.localIP());
+}
+void setupMQTT()
+{
+    mqtt.setServer(MQTT_SERVER, MQTT_PORT);
+}
+void reconnectMQTT()
+{
+    while (!mqtt.connected())
+    {
+        Serial.print("Connecting MQTT... ");
+
+        String clientId = "ESP32-" + String(MACHINE_ID);
+
+        if (mqtt.connect(clientId.c_str()))
+        {
+            Serial.println("Connected");
+        }
+        else
+        {
+            Serial.print("Failed, rc=");
+            Serial.print(mqtt.state());
+            Serial.println(" Retry 5s");
+
+            delay(5000);
+        }
+    }
+}
 void setup()
 {
     Serial.begin(115200);
+    topicCounter = "cnc/" + String(MACHINE_ID) + "/counter";
+    topicTarget  = "cnc/" + String(MACHINE_ID) + "/target";
+    topicReset   = "cnc/" + String(MACHINE_ID) + "/reset";
+    topicStatus  = "cnc/" + String(MACHINE_ID) + "/status";
+    topicMesin   = "cnc/" + String(MACHINE_ID) + "/mesin";
 
     uint8_t cpuClock = ESP.getCpuFreqMHz();
 
@@ -82,10 +146,18 @@ void setup()
     setAktual(0);
 
     lastState = digitalRead(PIN_COUNTER);
+    setupWiFi();
+    setupMQTT();
 }
 
 void loop()
 {
+    if (!mqtt.connected())
+    {
+        reconnectMQTT();
+    }
+
+    mqtt.loop();
     bool state = digitalRead(PIN_COUNTER);
     Serial.print("lastState = ");
     Serial.print(lastState);

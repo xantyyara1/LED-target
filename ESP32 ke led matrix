@@ -1,110 +1,114 @@
 #include <DMD32.h>
 #include "fonts/SystemFont5x7.h"
-#include "driver/pcnt.h"
+
 #define DISPLAYS_ACROSS 1
 #define DISPLAYS_DOWN 2
 #define PIN_COUNTER 27
+
 DMD dmd(DISPLAYS_ACROSS, DISPLAYS_DOWN);
-hw_timer_t* timer = NULL;
+hw_timer_t *timer = NULL;
+
 void IRAM_ATTR triggerScan()
 {
     dmd.scanDisplayBySPI();
 }
-String mesin  = "C502";
+
+String mesin = "C502";
 String target = "300";
 String aktual = "0";
 String persen = "0%";
-uint32_t lastCounter = 0;
-void updateDisplay() {
-dmd.clearScreen(true);
-dmd.drawString(0, 0,  mesin.c_str(),  mesin.length(),  GRAPHICS_NORMAL);
-dmd.drawString(0, 8,  target.c_str(), target.length(), GRAPHICS_NORMAL);
-dmd.drawString(0,16,  aktual.c_str(), aktual.length(), GRAPHICS_NORMAL);
-dmd.drawString(0,24,  persen.c_str(), persen.length(), GRAPHICS_NORMAL);
-}
-void setTarget(int value)
+
+uint32_t counter = 0;
+
+bool lastState = HIGH;
+uint32_t lastValidPulse = 0;
+
+// 50 ms (nanti bisa kita ubah)
+const uint32_t LOCK_TIME_US = 50000;
+
+void updateDisplay()
 {
-  target = String(value);
-  hitungPersen();
-  Serial.print("Target berubah menjadi : ");
-  Serial.println(target);
-  updateDisplay();
-}
-void hitungPersen()
-{
-  int t = target.toInt();
-  int a = aktual.toInt();
-  if (t <= 0) {
-    persen = "0%";
-    return;
-  }
-  int p = (a * 100) / t;
-  persen = String(p) + "%";
-}
-void setAktual(int value)
-{
-  aktual = String(value);
-  hitungPersen();
-  Serial.print("Aktual berubah menjadi : ");
-  Serial.println(aktual);
-  updateDisplay();
-}
-void setupPCNT()
-{
-    pcnt_config_t pcnt_config = {};
-    pcnt_config.pulse_gpio_num = PIN_COUNTER;
-    pcnt_config.ctrl_gpio_num = PCNT_PIN_NOT_USED;
-    pcnt_config.channel = PCNT_CHANNEL_0;
-    pcnt_config.unit = PCNT_UNIT_0;
-    pcnt_config.pos_mode = PCNT_COUNT_INC;
-    pcnt_config.neg_mode = PCNT_COUNT_DIS;
-    pcnt_config.lctrl_mode = PCNT_MODE_KEEP;
-    pcnt_config.hctrl_mode = PCNT_MODE_KEEP;
-    pcnt_config.counter_h_lim = 32767;
-    pcnt_config.counter_l_lim = 0;
-    pcnt_unit_config(&pcnt_config);
-    pcnt_set_filter_value(PCNT_UNIT_0, 100);
-    pcnt_filter_enable(PCNT_UNIT_0);
-    pcnt_counter_pause(PCNT_UNIT_0);
-    pcnt_counter_clear(PCNT_UNIT_0);
-    pcnt_counter_resume(PCNT_UNIT_0);
+    dmd.clearScreen(true);
+    dmd.drawString(0, 0, mesin.c_str(), mesin.length(), GRAPHICS_NORMAL);
+    dmd.drawString(0, 8, target.c_str(), target.length(), GRAPHICS_NORMAL);
+    dmd.drawString(0,16, aktual.c_str(), aktual.length(), GRAPHICS_NORMAL);
+    dmd.drawString(0,24, persen.c_str(), persen.length(), GRAPHICS_NORMAL);
 }
 
-void setup() {
-  Serial.begin(115200);
-uint8_t cpuClock = ESP.getCpuFreqMHz();
-timer = timerBegin(0, cpuClock, true);
-timerAttachInterrupt(timer, &triggerScan, true);
-timerAlarmWrite(timer, 100, true);
-timerAlarmEnable(timer);
-pinMode(PIN_COUNTER, INPUT_PULLUP);
-setupPCNT();
-dmd.selectFont(SystemFont5x7);
-setTarget(100);
-setAktual(0);
+void hitungPersen()
+{
+    int t = target.toInt();
+    int a = aktual.toInt();
+
+    if (t <= 0)
+    {
+        persen = "0%";
+        return;
+    }
+
+    persen = String((a * 100) / t) + "%";
 }
-static bool lastState = HIGH;
+
+void setTarget(int value)
+{
+    target = String(value);
+    hitungPersen();
+    updateDisplay();
+}
+
+void setAktual(int value)
+{
+    aktual = String(value);
+    hitungPersen();
+    updateDisplay();
+}
+
+void setup()
+{
+    Serial.begin(115200);
+
+    uint8_t cpuClock = ESP.getCpuFreqMHz();
+
+    timer = timerBegin(0, cpuClock, true);
+    timerAttachInterrupt(timer, &triggerScan, true);
+    timerAlarmWrite(timer, 100, true);
+    timerAlarmEnable(timer);
+
+    pinMode(PIN_COUNTER, INPUT_PULLUP);
+
+    dmd.selectFont(SystemFont5x7);
+
+    setTarget(100);
+    setAktual(0);
+
+    lastState = digitalRead(PIN_COUNTER);
+}
 
 void loop()
 {
     bool state = digitalRead(PIN_COUNTER);
+    Serial.print("lastState = ");
+    Serial.print(lastState);
+    Serial.print("  state = ");
+    Serial.println(state);
 
-    if (state != lastState)
+    // Hitung hanya saat relay OFF
+    if (lastState == LOW && state == HIGH)
     {
-       if (state == HIGH)
-        Serial.println("Pin HIGH");
-    else
-        Serial.println("Pin LOW"); 
-        lastState = state;
+        uint32_t now = micros();
+
+        if ((now - lastValidPulse) >= LOCK_TIME_US)
+        {
+            lastValidPulse = now;
+
+            counter++;
+
+            Serial.print("Counter = ");
+            Serial.println(counter);
+
+            setAktual(counter);
+        }
     }
-int16_t currentCounter;
-pcnt_get_counter_value(PCNT_UNIT_0, &currentCounter);
-    if (currentCounter != lastCounter)
-    {
-        lastCounter = currentCounter;
-    Serial.print("Counter = ");
-    Serial.println(currentCounter);
-        setAktual(currentCounter);
-    }
+
+    lastState = state;
 }
-
